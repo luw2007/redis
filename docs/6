@@ -1,0 +1,127 @@
+redis的事件处理器和网络框架
+===
+
+
+常见的服务端模型：
+---
+	1.单进程单线程 redis
+	2.单进程多线程 memcached
+	2.多进程单线程 nginx
+
+为什么单进程单线程的redis可以那么快。
+redis是纯内存kv数据库，存储和获取数据都是内存操作。
+瓶颈主是网络IO开销。那么redis是怎么做到的呢？
+
+首先我们来看看目前有那些常见的网络IO模型：
+---
+ - 同步模型（synchronous I/O）
+ - 阻塞IO（bloking I/O）
+ - 非阻塞IO（non-blocking I/O）
+ - 多路复用IO（multiplexing I/O）
+    - select poll epoll kqueue
+ - 信号驱动式IO（signal-driven I/O）
+    SIGIO，不常见
+ - 异步IO（asynchronous I/O）
+    POSIX的aio系列函数，IOCP（Windows I/O Completion Ports，IOCP on AIX 5 and 6）
+
+类比python中的网络IO
+---
+ - djando，flash是阻塞IO
+ - tornado的ioloop是非阻塞IO。不同版本的tornado具体是实现存在差异。Python3.4加入的asyncio大大改善了Python的异步编程。
+    从底层封装了非阻塞IO库，并提供友好上层方法。使得Python迸发出新的活力。
+        1. On Python 3, `IOLoop` is a wrapper around the `asyncio` event loop.
+            ayncio则是调用`Lib/Selector` A selector can use various implementations (select(), poll(), epoll()...) depending on the platform.
+        2. On Python 2, it uses ``epoll`` (Linux) or ``kqueue`` (BSD and Mac OS X) if they are available, or else we fall back on select().
+- uvloop 基于libuv的非阻塞IO库。libevent，libev，libuv的关系
+
+类比java中的网络IO
+---
+ - blocking I/O 就是阻塞IO
+ - NIO是非阻塞IO，同时实现了Reactor模式（即多路复用IO)
+    1. NIO会将数据准备好后，再交由应用进行处理，数据的读取/写入过程依然在应用线程中完成，只是将等待的时间剥离到单独的线程中去。
+    2. 节省数据准备时间（因为Selector可以复用）
+ - AIO 的Proactor模式，则是异步IO
+    1. 读完了再通知我
+    2. 不会加快IO，只是在读完后进行通知
+    3. 使用回调函数，进行业务处理
+
+
+事件相关代码：
+	ae.c
+	ae_epoll.c
+	ae_evport.c
+	ae_kqueue.c
+	ae_select.c
+
+
+epoll 相关的接口:
+linux系统头文件/usr/include/sys/epoll.h 中就可以看到epoll的定义。
+
+    typedef union epoll_data
+    {
+      void *ptr;
+      int fd;
+      uint32_t u32;
+      uint64_t u64;
+    } epoll_data_t;
+
+    struct epoll_event
+    {
+      uint32_t events;      /* Epoll events */
+      epoll_data_t data;    /* User data variable */
+    } EPOLL_PACKED;
+
+
+extern int epoll_create(int size);
+创建一个epoll实例。
+    “size”参数是指定与新实例关联的文件描述符的数量。 epoll_create()返回的fd应该用close()关闭。
+    返回新实例的fd。
+
+extern int epoll_ctl(int epfd，int op，int fd，struct epoll_event * event);
+注册一个epoll事件。
+    “epfd”参数是epoll实例的fd。
+    “fd”参数是操作的目标。
+    “op”参数是具体的操作，取值如下：
+        EPOLL_CTL_ADD 1 /* Add a file descriptor to the interface.  */
+        EPOLL_CTL_DEL 2 /* Remove a file descriptor from the interface.  */
+        EPOLL_CTL_MOD 3 /* Change file descriptor epoll_event structure.  */
+    “event”参数描述了调用者感兴趣的事件以及任何相关的用户数据。
+    成功返回0，失败特定的错误码
+
+
+extern int epoll_wait（int epfd，struct epoll_event * events，int maxevents，int timeout）;
+等待epoll事件。
+    “epfd”参数是epoll实例的fd。
+    “events”参数是一个包含触发事件的缓冲区。
+    “maxevents”是要返回的最大事件数（通常是“事件”的大小）。
+    “timeout”参数指定最长等待时间（以毫秒为单位）（-1 ==无限）。
+    返回“events”缓冲区中返回的触发事件数。如果出现错误并将“errno”变量设置为特定错误代码，则返回-1。
+
+
+ae_epoll.c
+
+    创建epoll:
+    static int aeApiCreate(aeEventLoop *eventLoop) {
+        state->epfd = epoll_create(1024)
+    }
+
+    注册epoll事件
+    static int aeApiAddEvent(aeEventLoop *eventLoop, int fd, int mask) {
+        if (epoll_ctl(state->epfd,op,fd,&ee) == -1) return -1;
+    }
+    static void aeApiDelEvent(aeEventLoop *eventLoop, int fd, int delmask) {
+        epoll_ctl(state->epfd,EPOLL_CTL_DEL,fd,&ee);
+    }
+
+    等待epoll事件
+    static int aeApiPoll(aeEventLoop *eventLoop, struct timeval *tvp) {
+        retval = epoll_wait(state->epfd,state->events,eventLoop->setsize,
+    }
+
+
+外链
+---
+- [Python3 asyncio](https://docs.python.org/3/library/asyncio-eventloops.html)
+- [IOCP](https://zh.wikipedia.org/wiki/IOCP)
+- [uvloop](https://github.com/MagicStack/uvloop)
+
