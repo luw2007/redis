@@ -60,6 +60,10 @@
     #endif
 #endif
 
+/*
+    setsize
+    server.maxclients+CONFIG_FDSET_INCR = 10000 + 128
+*/
 aeEventLoop *aeCreateEventLoop(int setsize) {
     aeEventLoop *eventLoop;
     int i;

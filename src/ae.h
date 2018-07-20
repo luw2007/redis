@@ -41,6 +41,15 @@
 #define AE_NONE 0       /* No events registered. */
 #define AE_READABLE 1   /* Fire when descriptor is readable. */
 #define AE_WRITABLE 2   /* Fire when descriptor is writable. */
+
+/* AE_BARRIER
+ * 通常我们首先执行可读事件，然后执行可写事件laster。
+ * 因为有时我们可能会在处理查询后立即提供查询的答复。
+ * 但是，如果在掩码中设置了AE_BARRIER，我们的应用程序正在执行相反的操作：
+ * 永远不会在可读之后触发可写事件。
+ * 在这种情况下，我们反转呼叫。例如，当我们想要在回复客户端之前在beforeSleep
+ * 函数中执行操作（如将文件同步到磁盘）时，这非常有用。 */
+
 #define AE_BARRIER 4    /* With WRITABLE, never fire the event if the
                            READABLE event already fired in the same event
                            loop iteration. Useful when you want to persist
@@ -50,15 +59,21 @@
 #define AE_FILE_EVENTS 1
 #define AE_TIME_EVENTS 2
 #define AE_ALL_EVENTS (AE_FILE_EVENTS|AE_TIME_EVENTS)
+/* AE_DONT_WAIT
+ * 设置AE_DONT_WAIT后，函数将尽快结束 */
 #define AE_DONT_WAIT 4
 #define AE_CALL_AFTER_SLEEP 8
 
 #define AE_NOMORE -1
 #define AE_DELETED_EVENT_ID -1
 
+/* 无用代码
+    #define AE_NOTUSED(V) ((void) V) */
 /* Macros */
 #define AE_NOTUSED(V) ((void) V)
 
+/* aeEventLoop
+ * 为了兼容老版本编译器，需要在下面的方法之前定义结构体 */
 struct aeEventLoop;
 
 /* Types and data structures */
@@ -67,6 +82,8 @@ typedef int aeTimeProc(struct aeEventLoop *eventLoop, long long id, void *client
 typedef void aeEventFinalizerProc(struct aeEventLoop *eventLoop, void *clientData);
 typedef void aeBeforeSleepProc(struct aeEventLoop *eventLoop);
 
+/* aeFileEvent
+ * 文件事件，linux中一切皆是文件，网络请求也是文件。 */
 /* File event structure */
 typedef struct aeFileEvent {
     int mask; /* one of AE_(READABLE|WRITABLE|BARRIER) */
@@ -75,6 +92,12 @@ typedef struct aeFileEvent {
     void *clientData;
 } aeFileEvent;
 
+/*
+ * aeTimeEvent 事件事件，使用双向链表来保存时间事件。每次从eventLoop->timeEventHead 开始遍历已经过期的事件，并执行 te->finalizerProc。
+ * 目前的时间事件有：
+ * 1. serverCron
+ * 2. moduleTimerHandler
+ * 3. showThroughput （benchmark中） */
 /* Time event structure */
 typedef struct aeTimeEvent {
     long long id; /* time event identifier. */
@@ -103,8 +126,12 @@ typedef struct aeEventLoop {
     aeFiredEvent *fired; /* Fired events */
     aeTimeEvent *timeEventHead;
     int stop;
+    /* apidata
+     * 使用预处理指令#ifdef，实现不同系统的aeApiState，然后将aeApiState指向eventLoop->apidata。 */
     void *apidata; /* This is used for polling API specific data */
     aeBeforeSleepProc *beforesleep;
+    /* aftersleep
+     * server.c 中，用于处理 moduleAcquireGIL */
     aeBeforeSleepProc *aftersleep;
 } aeEventLoop;
 
