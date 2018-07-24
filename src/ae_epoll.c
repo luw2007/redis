@@ -104,7 +104,11 @@ static void aeApiDelEvent(aeEventLoop *eventLoop, int fd, int delmask) {
         epoll_ctl(state->epfd,EPOLL_CTL_DEL,fd,&ee);
     }
 }
-
+/*
+ * struct timespec {
+ *	time_t  tv_sec;			// seconds
+ *  long    tv_nsec;		// nanoseconds
+ * } */
 static int aeApiPoll(aeEventLoop *eventLoop, struct timeval *tvp) {
     aeApiState *state = eventLoop->apidata;
     int retval, numevents = 0;

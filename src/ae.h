@@ -86,10 +86,10 @@ typedef void aeBeforeSleepProc(struct aeEventLoop *eventLoop);
  * 文件事件，linux中一切皆是文件，网络请求也是文件。 */
 /* File event structure */
 typedef struct aeFileEvent {
-    int mask; /* one of AE_(READABLE|WRITABLE|BARRIER) */
-    aeFileProc *rfileProc;
-    aeFileProc *wfileProc;
-    void *clientData;
+int mask; /* one of AE_(READABLE|WRITABLE|BARRIER) */
+aeFileProc *rfileProc;
+aeFileProc *wfileProc;
+void *clientData;
 } aeFileEvent;
 
 /*
