@@ -32,7 +32,7 @@ redis是纯内存kv数据库，存储和获取数据都是内存操作。
         1. On Python 3, `IOLoop` is a wrapper around the `asyncio` event loop.
             ayncio则是调用`Lib/Selector` A selector can use various implementations (select(), poll(), epoll()...) depending on the platform.
         2. On Python 2, it uses ``epoll`` (Linux) or ``kqueue`` (BSD and Mac OS X) if they are available, or else we fall back on select().
-- uvloop 基于libuv的非阻塞IO库。libevent，libev，libuv的关系
+ - uvloop 基于libuv的非阻塞IO库。libevent，libev，libuv的关系
 
 类比java中的网络IO
 ---
@@ -79,14 +79,14 @@ linux系统头文件/usr/include/sys/epoll.h 中就可以看到epoll的定义。
 
 
 创建一个epoll实例
-    
+
     extern int epoll_create(int size)
         “size”参数是指定与新实例关联的文件描述符的数量。 epoll_create()返回的fd应该用close()关闭。
         返回新实例的fd。
 
 
 注册一个epoll事件
-    
+
     extern int epoll_ctl(int epfd，int op，int fd，struct epoll_event * event)
         “epfd”参数是epoll实例的fd。
         “fd”参数是操作的目标。
@@ -96,9 +96,9 @@ linux系统头文件/usr/include/sys/epoll.h 中就可以看到epoll的定义。
             EPOLL_CTL_MOD 3 /* Change file descriptor epoll_event structure.  */
         “event”参数描述了调用者感兴趣的事件以及任何相关的用户数据。
         成功返回0，失败特定的错误码
-    
+
 等待epoll事件
-    
+
     extern int epoll_wait(int epfd，struct epoll_event * events，int maxevents，int timeout)
         “epfd”参数是epoll实例的fd。
         “events”参数是一个包含触发事件的缓冲区。
@@ -106,12 +106,12 @@ linux系统头文件/usr/include/sys/epoll.h 中就可以看到epoll的定义。
         “timeout”参数指定最长等待时间（以毫秒为单位）（-1 ==无限）。
         返回“events”缓冲区中返回的触发事件数。如果出现错误并将“errno”变量设置为特定错误代码，则返回-1。
 
- 
+
 redis中epoll的使用
 ---
-    
+
     ae_epoll.c
-    
+
     创建epoll:
     static int aeApiCreate(aeEventLoop *eventLoop) {
         state->epfd = epoll_create(1024)
@@ -141,10 +141,18 @@ aeEventLoop 是整个事件循环的主结构体。
 - 使用双向链表处理时间事件的aeTimeEvent。
 - 存储当前需要处理的文件事件集合的aeFiredEvent。
 
-
 ae.c
 ---
 
+网络框架和协议
+===
+TODO:
+
+协议
+---
+
+networking.c
+---
 
 进阶
 ===
@@ -165,3 +173,5 @@ linux内核中epoll的实现
 - [IOCP](https://zh.wikipedia.org/wiki/IOCP)
 - [uvloop](https://github.com/MagicStack/uvloop)
 - [eventpoll.c](https://sourcegraph.com/github.com/torvalds/linux@master/-/blob/fs/eventpoll.c)
+- [IO多路复用原理剖析](https://juejin.im/post/59f9c6d66fb9a0450e75713f)
+
