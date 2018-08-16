@@ -81,7 +81,8 @@ linux系统头文件/usr/include/sys/epoll.h 中就可以看到epoll的定义。
 创建一个epoll实例
 
     extern int epoll_create(int size)
-        “size”参数是指定与新实例关联的文件描述符的数量。 epoll_create()返回的fd应该用close()关闭。
+        “size”参数是指定与新实例关联的文件描述符的数量。早期版本内核会使用 size 的大小去申请对应的内存(如果在使用的时候超过了给定的size， 内核会申请更多的空间)。大于2.6.8版本，这个size参数不再使用了（内核会动态的申请需要的内存）。但要注意的是，这个size必须要大于0，为了兼容旧版的linux 内核的代码。
+        epoll_create()返回的fd应该用close()关闭。
         返回新实例的fd。
 
 
@@ -144,15 +145,17 @@ aeEventLoop 是整个事件循环的主结构体。
 ae.c
 ---
 
-网络框架和协议
-===
-TODO:
-
-协议
----
-
 networking.c
 ---
+网络框架和协议
+客户端调用链
+void acceptTcpHandler(aeEventLoop *el, int fd, void *privdata, int mask)
+ static void acceptCommonHandler(int fd, int flags, char *ip)
+  client *createClient(int fd)
+   void readQueryFromClient(aeEventLoop *el, int fd, void *privdata, int mask)
+    void processInputBuffer(client *c)
+     int processMultibulkBuffer(client *c)
+     int processInlineBuffer(client *c)
 
 进阶
 ===
@@ -174,4 +177,4 @@ linux内核中epoll的实现
 - [uvloop](https://github.com/MagicStack/uvloop)
 - [eventpoll.c](https://sourcegraph.com/github.com/torvalds/linux@master/-/blob/fs/eventpoll.c)
 - [IO多路复用原理剖析](https://juejin.im/post/59f9c6d66fb9a0450e75713f)
-
+- [redis protocol](https://redis.io/topics/protocol)

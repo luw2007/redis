@@ -67,7 +67,7 @@
 #define AE_NOMORE -1
 #define AE_DELETED_EVENT_ID -1
 
-/* 无用代码
+/* FIXME 无用代码
     #define AE_NOTUSED(V) ((void) V) */
 /* Macros */
 #define AE_NOTUSED(V) ((void) V)
@@ -86,14 +86,15 @@ typedef void aeBeforeSleepProc(struct aeEventLoop *eventLoop);
  * 文件事件，linux中一切皆是文件，网络请求也是文件。 */
 /* File event structure */
 typedef struct aeFileEvent {
-int mask; /* one of AE_(READABLE|WRITABLE|BARRIER) */
-aeFileProc *rfileProc;
-aeFileProc *wfileProc;
-void *clientData;
+    int mask; /* one of AE_(READABLE|WRITABLE|BARRIER) */
+    aeFileProc *rfileProc;
+    aeFileProc *wfileProc;
+    void *clientData;
 } aeFileEvent;
 
 /*
- * aeTimeEvent 事件事件，使用双向链表来保存时间事件。每次从eventLoop->timeEventHead 开始遍历已经过期的事件，并执行 te->finalizerProc。
+ * aeTimeEvent 事件事件，使用双向链表来保存时间事件。
+ * 每次从eventLoop->timeEventHead 开始遍历已经过期的事件，并执行 te->finalizerProc。
  * 目前的时间事件有：
  * 1. serverCron
  * 2. moduleTimerHandler
@@ -110,6 +111,8 @@ typedef struct aeTimeEvent {
     struct aeTimeEvent *next;
 } aeTimeEvent;
 
+/* aeFiredEvent 触发事件，aeApiPoll 中拿到需要处理的事件列表，
+ * 保存到 eventLoop->fired[j]中 */
 /* A fired event */
 typedef struct aeFiredEvent {
     int fd;
@@ -127,7 +130,8 @@ typedef struct aeEventLoop {
     aeTimeEvent *timeEventHead;
     int stop;
     /* apidata
-     * 使用预处理指令#ifdef，实现不同系统的aeApiState，然后将aeApiState指向eventLoop->apidata。 */
+     * 使用预处理指令#ifdef，实现不同系统的aeApiState，
+     * 然后将aeApiState指向eventLoop->apidata。 */
     void *apidata; /* This is used for polling API specific data */
     aeBeforeSleepProc *beforesleep;
     /* aftersleep
