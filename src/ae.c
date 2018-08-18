@@ -173,8 +173,13 @@ void aeDeleteFileEvent(aeEventLoop *eventLoop, int fd, int mask)
     if (fe->mask == AE_NONE) return;
 
     /* 如果设置了写状态，则设置反转呼叫状态，
-     * ? 主要是为了取epoll中注销时判断是否可以注销。 */
-    /* FIXME 语法错误 We want to always set AE_BARRIER if set AE_WRITABLE */
+     * ? 主要是为了取epoll中注销时判断是否可以注销。
+     * 这里的注释比较难懂，是对
+     * if (mask & AE_WRITABLE) mask |= AE_BARRIER;
+     * fe->mask = fe->mask & (~mask);
+     * 的共同注释。理解成：我们总是在AE_WRITABLE状态被删除时，
+     * 也删除AE_BARRIER状态*/
+
     /* We want to always remove AE_BARRIER if set when AE_WRITABLE
      * is removed. */
     if (mask & AE_WRITABLE) mask |= AE_BARRIER;

@@ -43,6 +43,9 @@ size_t sdsZmallocSize(sds s) {
     return zmalloc_size(sh);
 }
 
+/* getStringObjectSdsUsedMemory 用在调试模式
+ * 如：DEBUG SDSLEN <key>
+ * Show low level SDS string info representing key and value. */
 /* Return the amount of memory used by the sds string at object->ptr
  * for a string object. */
 size_t getStringObjectSdsUsedMemory(robj *o) {
@@ -66,6 +69,9 @@ void freeClientReplyValue(void *o) {
     zfree(o);
 }
 
+/* listMatchObjects
+ * 比较两个类型，主要调用compareStringObjectsWithFlags(a,b,REDIS_COMPARE_BINARY)
+ * REDIS_COMPARE_BINARY 表示二进制安全的比较方式。 */
 int listMatchObjects(void *a, void *b) {
     return equalStringObjects(a,b);
 }
@@ -90,6 +96,11 @@ client *createClient(int fd) {
      * in the context of a client. When commands are executed in other
      * contexts (for instance a Lua script) we need a non connected client. */
     if (fd != -1) {
+        /* 为什么redis快，下面有几点优化
+         * 将fd设置成无阻塞模式
+         * 设置socketopt TCP_NODELAY，防止操作系统合并小包，导致最差情况出现200ms超时
+         * 如果支持则开启TCP长连接
+         * 将客户端fd添加到文件事件中，添加失败就关闭fd */
         anetNonBlock(NULL,fd);
         anetEnableTcpNoDelay(NULL,fd);
         if (server.tcpkeepalive)
@@ -155,6 +166,7 @@ client *createClient(int fd) {
     listSetFreeMethod(c->pubsub_patterns,decrRefCountVoid);
     listSetMatchMethod(c->pubsub_patterns,listMatchObjects);
     if (fd != -1) linkClient(c);
+    /* 初始化client 事务 Client state initialization for MULTI/EXEC */
     initClientMultiState(c);
     return c;
 }

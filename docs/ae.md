@@ -1,7 +1,6 @@
 redis的事件处理器和网络框架
 ===
 
-
 常见的服务端模型：
 ---
     1.单进程单线程 redis
@@ -10,19 +9,21 @@ redis的事件处理器和网络框架
 
 为什么单进程单线程的redis可以那么快。
 redis是纯内存kv数据库，存储和获取数据都是内存操作。
-瓶颈主是网络IO开销。那么redis是怎么做到的呢？
+瓶颈主是网络IO开销。那么redis是怎么设计的呢？
 
-首先我们来看看目前有那些常见的网络IO模型：
+网络IO模型
 ---
- - 同步模型（synchronous I/O）
- - 阻塞IO（bloking I/O）
- - 非阻塞IO（non-blocking I/O）
- - 多路复用IO（multiplexing I/O）
-    - select poll epoll kqueue
- - 信号驱动式IO（signal-driven I/O）
-    SIGIO，不常见
- - 异步IO（asynchronous I/O）
-    POSIX的aio系列函数，IOCP（Windows I/O Completion Ports，IOCP on AIX 5 and 6）
+首先我们来看看目前有那些常见的网络IO模型：
+- 同步模型（synchronous I/O）
+- 阻塞IO（bloking I/O）
+- 非阻塞IO（non-blocking I/O）
+- 多路复用IO（multiplexing I/O）
+  - select poll epoll kqueue
+- 信号驱动式IO（signal-driven I/O）
+  - SIGIO，不常见
+- 异步IO（asynchronous I/O）
+  - POSIX的aio系列函数，IOCP（Windows I/O Completion Ports，IOCP on AIX 5 and 6）
+信号驱动式IO 看上去像是异步IO，但是
 
 类比python中的网络IO
 ---
@@ -36,7 +37,7 @@ redis是纯内存kv数据库，存储和获取数据都是内存操作。
 
 类比java中的网络IO
 ---
- - blocking I/O 就是阻塞IO
+ - blocking I/O 就是阻塞IO，多线程版本。
  - NIO是非阻塞IO，同时实现了Reactor模式（即多路复用IO)
     1. NIO会将数据准备好后，再交由应用进行处理，数据的读取/写入过程依然在应用线程中完成，只是将等待的时间剥离到单独的线程中去。
     2. 节省数据准备时间（因为Selector可以复用）
@@ -144,18 +145,8 @@ aeEventLoop 是整个事件循环的主结构体。
 
 ae.c
 ---
+implements the Redis event loop, it's a self contained library which is simple to read and understand.
 
-networking.c
----
-网络框架和协议
-客户端调用链
-void acceptTcpHandler(aeEventLoop *el, int fd, void *privdata, int mask)
- static void acceptCommonHandler(int fd, int flags, char *ip)
-  client *createClient(int fd)
-   void readQueryFromClient(aeEventLoop *el, int fd, void *privdata, int mask)
-    void processInputBuffer(client *c)
-     int processMultibulkBuffer(client *c)
-     int processInlineBuffer(client *c)
 
 进阶
 ===
@@ -166,14 +157,11 @@ linux内核中epoll的实现
 参考[【Linux深入】epoll源码的函数调用流程分析（图）](https://blog.csdn.net/baiye_xing/article/details/76360290)
 
 
-
-
-
-
 外链
 ---
 - [Python3 asyncio](https://docs.python.org/3/library/asyncio-eventloops.html)
 - [IOCP](https://zh.wikipedia.org/wiki/IOCP)
+- [Asynchronous I/O](https://en.wikipedia.org/wiki/Asynchronous_I/O)
 - [uvloop](https://github.com/MagicStack/uvloop)
 - [eventpoll.c](https://sourcegraph.com/github.com/torvalds/linux@master/-/blob/fs/eventpoll.c)
 - [IO多路复用原理剖析](https://juejin.im/post/59f9c6d66fb9a0450e75713f)
